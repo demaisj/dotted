@@ -10,7 +10,7 @@ As I don't like sharing my dotfiles with third-parties (security & privacy reaso
 
 To install this toolkit, you'll need to run this installer script. It does verify the compatibility of your system, installs missing packages & creates the *dotted* workspace.
 ```bash
-bash -c $(https://github.com/demaisj/dotted/raw/master/installer.sh)
+bash -c "$(curl -fsSL https://github.com/demaisj/dotted/raw/master/installer.sh)"
 ```
 
 ## License

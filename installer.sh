@@ -152,21 +152,27 @@ fi
 echo "3) Creating dotted workspace..."
 eval DEST="$(prompt_txt "Dotted workspace location" "~/.dotted")"
 if prompt_yn "Do you want to clone an existing workspace?"; then
-  URL="$(prompt_txt "Git repository URL")"
+  eval URL="$(prompt_txt "Git repository URL")"
   if ! git clone "$URL" "$DEST"; then
     errcho "Failed to clone repository!"
     exit 1
   fi
 else
   echo "Creating a new git repository..."
-  mkdir -p "$DEST"
+  if ! mkdir -p "$DEST"; then
+    errcho "Could not create directory"
+  fi
   git -C "$DEST" init
   echo "Downloading latest toolkit version..."
-  curl -fsSL "$GITHUB_URL$GITHUB_REPO/raw/$GITHUB_BRANCH/dotted.sh" > "$DEST/dotted.sh"
+  if ! curl -fsSL "$GITHUB_URL$GITHUB_REPO/raw/$GITHUB_BRANCH/dotted.sh" > "$DEST/dotted.sh"; then
+    errcho "Could not download toolkit!"
+    exit 1
+  fi
   chmod 755 "$DEST/dotted.sh"
-  git -C "$DEST" add "$DEST"
-  git -C "$DEST" commit -m "Initial commit"
+  git -C "$DEST" add "$DEST" >> /dev/null
+  git -C "$DEST" commit -m "Initial commit" >> /dev/null
 fi
 
-echo "4) Running $DEST/dotted.sh init"
+echo "4) Initializing workspace..."
+echo "Running $DEST/dotted.sh init"
 "$DEST/dotted.sh" init

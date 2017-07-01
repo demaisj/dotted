@@ -109,6 +109,10 @@ function prompt_txt() {
   done
 }
 
+function repo() {
+  git -C "$WORKSPACE" $@
+}
+
 OS=$(uname --operating-system)
 HOSTNAME=$(uname --nodename)
 DISTRO=$(get_distro)
@@ -162,15 +166,15 @@ function cmd_upgrade() {
 
 function cmd_sync() {
   echo "Syncing repo..."
-  STATUS=$(git -C "$WORKSPACE" status --porcelain | tail -n1)
+  STATUS=$(repo status --porcelain | tail -n1)
   if [[ -n $STATUS ]]; then
-    git add --all >/dev/null
-    git commit -qm "[sync] $USER@$HOSTNAME - $(date "+%Y-%m-%d %H:%M:%S")" >/dev/null
+    repo add --all >/dev/null
+    repo commit -qm "[sync] $USER@$HOSTNAME - $(date "+%Y-%m-%d %H:%M:%S")" >/dev/null
   fi
-  if git remote show | grep "origin" >/dev/null; then
-    BRANCH=$(git rev-parse --abbrev-ref HEAD)
-    git pull -q --no-edit origin "$BRANCH" >/dev/null
-    git push -q origin "$BRANCH" >/dev/null
+  if repo remote show | grep "origin" >/dev/null; then
+    BRANCH=$(repo rev-parse --abbrev-ref HEAD)
+    repo pull -q --no-edit origin "$BRANCH" >/dev/null
+    repo push -q origin "$BRANCH" >/dev/null
   fi
   echo "Done."
   exit 0
@@ -178,14 +182,14 @@ function cmd_sync() {
 
 function cmd_sync_url() {
   if [[ -n $1 ]]; then
-    if git remote show | grep "origin" >/dev/null; then
-      git remote set-url origin "$1"
+    if repo remote show | grep "origin" >/dev/null; then
+      repo remote set-url origin "$1"
     else
-      git remote add origin "$1"
+      repo remote add origin "$1"
     fi
   else
-    if git remote show | grep "origin" >/dev/null; then
-      git remote get-url origin
+    if repo remote show | grep "origin" >/dev/null; then
+      repo remote get-url origin
     else
       error "No sync remote set up!"
     fi

@@ -7,9 +7,10 @@
 SCRIPT=$(realpath "$0")
 SCRIPTPATH=${SCRIPT%/*}
 WORKSPACE=$SCRIPTPATH
+TARGET=$HOME
 
 THIS=$0
-ARGV=($@)
+ARGV=("$@")
 ARGC=$#
 
 VERSION="0.1"
@@ -18,12 +19,14 @@ GITHUB_URL="https://github.com/"
 GITHUB_REPO="demaisj/dotted"
 GITHUB_BRANCH="master"
 
+DEFAULT_GROUP="common"
+
 # ----------------
 # UTILS
 # ----------------
 
 function errcho() {
-  (>&2 echo $@)
+  (>&2 echo "$@")
 }
 
 function contains() {
@@ -110,7 +113,11 @@ function prompt_txt() {
 }
 
 function repo() {
-  git -C "$WORKSPACE" $@
+  git -C "$WORKSPACE" "$@"
+}
+
+function self() {
+  "$SCRIPT" "$@"
 }
 
 OS=$(uname --operating-system)
@@ -132,6 +139,28 @@ function cmd_help() {
 
 function cmd_version() {
   echo "$THIS version $VERSION"
+  exit 0
+}
+
+# ----------------
+# INITIALIZATION
+# ----------------
+function cmd_init() {
+  if [ -f "$WORKSPACE/dotted.conf" ]; then
+    error "Dotted is already initialized"
+  fi
+  echo "Initializing dotted..."
+  if ! curl -fsSL "$GITHUB_URL$GITHUB_REPO/raw/$GITHUB_BRANCH/dotted.default.conf" > "$WORKSPACE/dotted.conf"; then
+    error "Could not create config file!"
+  fi
+  mkdir -p "$WORKSPACE/$DEFAULT_GROUP/"
+  touch "$WORKSPACE/$DEFAULT_GROUP/.stow"
+  mkdir -p "$WORKSPACE/$DEFAULT_GROUP/dotted/.local/bin/"
+  ln -s "$WORKSPACE/dotted" "$WORKSPACE/$DEFAULT_GROUP/dotted/.local/bin/dotted"
+  mkdir -p "$WORKSPACE/$DEFAULT_GROUP/dotted/.config/"
+  ln -s "$WORKSPACE/dotted.conf" "$WORKSPACE/$DEFAULT_GROUP/dotted/.config/dotted.conf"
+  self link "$DEFAULT_GROUP" "dotted"
+  echo "Done!"
   exit 0
 }
 
@@ -197,12 +226,79 @@ function cmd_sync_url() {
   exit 0
 }
 
+# ----------------
+# LINKING
+# ----------------
+
+function select_group_pkg() {
+  package=()
+  if [ -d "$WORKSPACE/$1/" ]; then
+    group="$1"
+    if [[ -n $2 ]]; then
+      if [ -d "$WORKSPACE/$group/$2/" ]; then
+        package=("$2")
+      else
+        error "The selected package does not exist."
+      fi
+    else
+      for f in $(ls -d $WORKSPACE/$group/*/ 2>/dev/null); do
+        package=("${package[@]}" "$(basename $f)")
+      done
+      if [ ${#package[@]} == 0 ]; then
+        error "The selected group is empty."
+      fi
+    fi
+  else if ! [[ -n $2 ]] && [ -d "$WORKSPACE/$DEFAULT_GROUP/$1/" ]; then
+    group="$DEFAULT_GROUP"
+    package=("$1")
+  else
+    error "The selected group does not exist."
+  fi; fi
+}
+
+function cmd_link() {
+  if ! [[ -n $1 ]]; then
+    errcho "Usage: $THIS link [<GROUP>] <PACKAGE>"
+    errcho "Try '$THIS help link' for more information."
+    exit 1
+  fi
+  select_group_pkg "$@"
+  stow -d "$WORKSPACE/$group" -t "$TARGET" -S "${package[@]}" --verbose=1
+  exit 0
+}
+
+function cmd_unlink() {
+  if ! [[ -n $1 ]]; then
+    errcho "Usage: $THIS unlink [<GROUP>] <PACKAGE>"
+    errcho "Try '$THIS help link' for more information."
+    exit 1
+  fi
+  select_group_pkg "$@"
+  stow -d "$WORKSPACE/$group" -t "$TARGET" -D "${package[@]}" --verbose=1
+  exit 0
+}
+
+function cmd_relink() {
+  if ! [[ -n $1 ]]; then
+    errcho "Usage: $THIS relink [<GROUP>] <PACKAGE>"
+    errcho "Try '$THIS help link' for more information."
+    exit 1
+  fi
+  select_group_pkg "$@"
+  stow -d "$WORKSPACE/$group" -t "$TARGET" -R "${package[@]}" --verbose=1
+  exit 0
+}
 
 [ $ARGC == 0 ] && usage
-[ "$1" == "help" ] && cmd_help ${ARGV[@]:1}
-[ "$1" == "version" ] && cmd_version ${ARGV[@]:1}
-[ "$1" == "upgrade" ] && cmd_upgrade ${ARGV[@]:1}
+[ "$1" == "help" ] && cmd_help "${ARGV[@]:1}"
+[ "$1" == "version" ] && cmd_version "${ARGV[@]:1}"
+[ "$1" == "init" ] && cmd_init "${ARGV[@]:1}"
+[ "$1" == "upgrade" ] && cmd_upgrade "${ARGV[@]:1}"
 
-[ "$1" == "sync" ] && cmd_sync ${ARGV[@]:1}
-[ "$1" == "sync-url" ] && cmd_sync_url ${ARGV[@]:1}
+[ "$1" == "sync" ] && cmd_sync "${ARGV[@]:1}"
+[ "$1" == "sync-url" ] && cmd_sync_url "${ARGV[@]:1}"
+
+[ "$1" == "link" ] && cmd_link "${ARGV[@]:1}"
+[ "$1" == "unlink" ] && cmd_unlink "${ARGV[@]:1}"
+[ "$1" == "relink" ] && cmd_relink "${ARGV[@]:1}"
 error "'$1' is not a valid command."

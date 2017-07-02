@@ -164,15 +164,15 @@ else
   fi
   git -C "$DEST" init
   echo "Downloading latest toolkit version..."
-  if ! curl -fsSL "$GITHUB_URL$GITHUB_REPO/raw/$GITHUB_BRANCH/dotted.sh" > "$DEST/dotted.sh"; then
+  if ! curl -fsSL "$GITHUB_URL$GITHUB_REPO/raw/$GITHUB_BRANCH/dotted.sh" > "$DEST/dotted"; then
     errcho "Could not download toolkit!"
     exit 1
   fi
-  chmod 755 "$DEST/dotted.sh"
+  chmod 755 "$DEST/dotted"
   git -C "$DEST" add "$DEST" >> /dev/null
   git -C "$DEST" commit -m "Initial commit" >> /dev/null
 fi
 
 echo "4) Initializing workspace..."
-echo "Running $DEST/dotted.sh init"
-"$DEST/dotted.sh" init
+echo "Running $DEST/dotted init"
+"$DEST/dotted" init
